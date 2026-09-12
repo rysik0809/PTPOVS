@@ -7,7 +7,7 @@
 #include <iostream>
 
 std::size_t wordCounter::countRaw(std::string_view text,
-                                     std::string_view word) noexcept
+                                  std::string_view word) noexcept
 {
     if(word.empty() || word.size() > text.size())
     {
@@ -37,8 +37,8 @@ std::size_t wordCounter::countRaw(std::string_view text,
 }
 
 std::size_t wordCounter::count(std::string_view text,
-                                std::string_view word,
-                                unsigned options) const
+                               std::string_view word,
+                               unsigned options) const
 {
     //const bool wholeWord = options & wholeWord;
     //const bool ignoreCase = options & ignoreCase;
