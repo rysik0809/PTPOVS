@@ -1,22 +1,6 @@
-#include "file_io.hpp"
-#include "word_counter.hpp"
-#include <iostream>
-#include <fstream>
+#include "ui.hpp"
 
-int main() {
-    try 
-    {
-        fileBuffer file("voina_i_mir.txt");
-
-        std::cout << "Размер: " << file.size() << " байт\n";
-
-        wordCounter w;
-
-        std::cout << w.count(file.view(), "Она") << '\n'; 
-    } 
-    catch (const std::exception& e) 
-    {
-        std::cerr << "Исключение: " << e.what() << '\n';
-        return 1;
-    }
+int main()
+{
+    return ui::run();
 }
