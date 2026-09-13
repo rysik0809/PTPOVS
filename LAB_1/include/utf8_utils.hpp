@@ -3,9 +3,9 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <cstddef>
 
-namespace utf8 {
+namespace utf8 
+{
 
 /// Является ли кодовая точка «словесным» символом (буква/цифра).
 bool isWordCodepoint(char32_t cp) noexcept;

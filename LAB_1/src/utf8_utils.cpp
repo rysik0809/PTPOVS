@@ -4,50 +4,68 @@ namespace utf8 {
 
 namespace {
 
+/**
+ * @brief Декодирует одну кодовую точку UTF-8.
+ *
+ * Поддерживает корректные последовательности 1–4 байт.
+ * Отклоняет overlong-кодировки, surrogate-диапазон и значения > U+10FFFF.
+ *
+ * @param s исходная строка
+ * @param i индекс начала последовательности; при успехе сдвигается вперёд
+ * @param cp результат — кодовая точка
+ * @return true при успешном декодировании
+ */
 bool decodeOne(std::string_view s, std::size_t& i, char32_t& cp) noexcept
 {
     if (i >= s.size()) return false;
 
-    const unsigned char c0 = static_cast<unsigned char>(s[i]);
+    const auto c0 = static_cast<unsigned char>(s[i]);
 
-    if (c0 < 0x80) { cp = c0; ++i; return true; }
+    if (c0 < 0x80) 
+    {
+        cp = c0;
+        ++i;
+        return true;
+    }
+
+    std::size_t len = 0;
+    char32_t minCp = 0;
 
     if ((c0 & 0xE0) == 0xC0) {
-        if (i + 1 >= s.size()) return false;
-        const unsigned char c1 = static_cast<unsigned char>(s[i + 1]);
-        if ((c1 & 0xC0) != 0x80) return false;
-        cp = ((c0 & 0x1Fu) << 6) | (c1 & 0x3Fu);
-        i += 2;
-        return true;
+        len = 2;
+        cp = c0 & 0x1F;
+        minCp = 0x80;
+    } else if ((c0 & 0xF0) == 0xE0) {
+        len = 3;
+        cp = c0 & 0x0F;
+        minCp = 0x800;
+    } else if ((c0 & 0xF8) == 0xF0) {
+        len = 4;
+        cp = c0 & 0x07;
+        minCp = 0x10000;
+    } else {
+        return false;
     }
 
-    if ((c0 & 0xF0) == 0xE0) {
-        if (i + 2 >= s.size()) return false;
-        const unsigned char c1 = static_cast<unsigned char>(s[i + 1]);
-        const unsigned char c2 = static_cast<unsigned char>(s[i + 2]);
-        if ((c1 & 0xC0) != 0x80 || (c2 & 0xC0) != 0x80) return false;
-        cp = ((c0 & 0x0Fu) << 12) | ((c1 & 0x3Fu) << 6) | (c2 & 0x3Fu);
-        i += 3;
-        return true;
+    if (i + len > s.size()) return false;
+
+    for (std::size_t k = 1; k < len; ++k) 
+    {
+        const auto c = static_cast<unsigned char>(s[i + k]);
+        if ((c & 0xC0) != 0x80) return false;
+        cp = (cp << 6) | (c & 0x3F);
     }
 
-    if ((c0 & 0xF8) == 0xF0) {
-        if (i + 3 >= s.size()) return false;
-        const unsigned char c1 = static_cast<unsigned char>(s[i + 1]);
-        const unsigned char c2 = static_cast<unsigned char>(s[i + 2]);
-        const unsigned char c3 = static_cast<unsigned char>(s[i + 3]);
-        if ((c1 & 0xC0) != 0x80 ||
-            (c2 & 0xC0) != 0x80 ||
-            (c3 & 0xC0) != 0x80) return false;
-        cp = ((c0 & 0x07u) << 18) | ((c1 & 0x3Fu) << 12)
-           | ((c2 & 0x3Fu) << 6)  | (c3 & 0x3Fu);
-        i += 4;
-        return true;
-    }
+    // Отсекаем некорректные кодовые точки.
+    if (cp < minCp) return false;
+    if (cp >= 0xD800 && cp <= 0xDFFF) return false;
+    if (cp > 0x10FFFF) return false;
 
-    return false;
+    i += len;
+    return true;
 }
 
+/// Кодирует кодовую точку обратно в UTF-8 и дописывает в строку.
 void appendUtf8(std::string& out, char32_t cp)
 {
     if (cp <= 0x7F) {
@@ -71,14 +89,15 @@ void appendUtf8(std::string& out, char32_t cp)
 
 bool isWordCodepoint(char32_t cp) noexcept
 {
+    // ASCII: буквы и цифры.
     if (cp >= U'A' && cp <= U'Z') return true;
     if (cp >= U'a' && cp <= U'z') return true;
     if (cp >= U'0' && cp <= U'9') return true;
 
-    // Латиница с диакритикой
+    // Латиница с диакритикой.
     if (cp >= 0x00C0 && cp <= 0x024F) return true;
 
-    // Кириллица: основной блок + дополнение
+    // Кириллица: основной блок и дополнение.
     if (cp >= 0x0400 && cp <= 0x04FF) return true;
     if (cp >= 0x0500 && cp <= 0x052F) return true;
 
@@ -87,9 +106,12 @@ bool isWordCodepoint(char32_t cp) noexcept
 
 char32_t toLowerCp(char32_t cp) noexcept
 {
-    if (cp >= U'A' && cp <= U'Z') return cp + 32;        // A-Z  -> a-z
-    if (cp >= 0x0410 && cp <= 0x042F) return cp + 0x20;  // А-Я  -> а-я
-    if (cp >= 0x0400 && cp <= 0x040F) return cp + 0x50;  // Ѐ-Џ  -> ѐ-џ
+    if (cp >= U'A' && cp <= U'Z') return cp + 32;
+
+    if (cp >= 0x0410 && cp <= 0x042F) return cp + 0x20;
+
+    if (cp >= 0x0400 && cp <= 0x040F) return cp + 0x50;
+
     return cp;
 }
 
@@ -99,16 +121,22 @@ std::string toLower(std::string_view s)
     out.reserve(s.size());
 
     std::size_t i = 0;
-    while (i < s.size()) {
+    while (i < s.size()) 
+    {
         const std::size_t start = i;
         char32_t cp = 0;
-        if (!decodeOne(s, i, cp)) {
+
+        if (!decodeOne(s, i, cp)) 
+        {
+            // Некорректный байт оставляем как есть, чтобы не терять данные.
             out.push_back(s[start]);
             i = start + 1;
             continue;
         }
+
         appendUtf8(out, toLowerCp(cp));
     }
+
     return out;
 }
 
@@ -117,29 +145,29 @@ std::vector<std::string_view> splitWords(std::string_view text)
     std::vector<std::string_view> words;
 
     std::size_t i = 0;
-    while (i < text.size()) {
-        std::size_t save = i;
+    while (i < text.size()) 
+    {
+        const std::size_t start = i;
         char32_t cp = 0;
 
-        if (!decodeOne(text, i, cp)) {
-            i = save + 1;   // некорректный байт — пропускаем
+        if (!decodeOne(text, i, cp)) 
+        {
+            ++i; // пропускаем некорректный байт
             continue;
         }
-        if (!isWordCodepoint(cp)) {
+        if (!isWordCodepoint(cp)) 
+        {
             continue;
         }
 
-        const std::size_t start = save;
         std::size_t end = i;
+        while (i < text.size()) 
+        {
+            const std::size_t save = i;
 
-        while (i < text.size()) {
-            std::size_t save2 = i;
-            char32_t cp2 = 0;
-            if (!decodeOne(text, i, cp2)) {
-                i = save2 + 1;
-                break;
-            }
-            if (!isWordCodepoint(cp2)) {
+            if (!decodeOne(text, i, cp) || !isWordCodepoint(cp)) 
+            {
+                i = save; // возвращаемся к разделителю или ошибке
                 break;
             }
             end = i;

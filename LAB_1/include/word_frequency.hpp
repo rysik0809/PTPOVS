@@ -1,23 +1,24 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
-#include <cstddef>
 
 /**
  * @brief Подсчёт уникальных слов в тексте.
  *
- * Собирает все слова, считает их частоты и хранит результат,
- * отсортированный по убыванию частоты (при равенстве — по алфавиту).
+ * Накапливает частоты слов. Результат отсортирован по убыванию частоты,
+ * при равенстве — по алфавиту.
  */
 class wordFrequency
 {
 public:
     enum options : unsigned
     {
-        none        = 0,            ///< учитывать регистр
-        ignoreCase  = 1u << 0,      ///< приводить слова к нижнему регистру
+        none        = 0,        ///< учитывать регистр
+        ignoreCase  = 1u << 0,  ///< приводить слова к нижнему регистру
     };
 
     struct entry
@@ -38,12 +39,16 @@ public:
     std::size_t uniqueCount() const noexcept { return entries_.size(); }
 
     /// Общее количество слов (с повторами).
-    std::size_t totalCount()  const noexcept { return total_; }
+    std::size_t totalCount() const noexcept { return total_; }
 
     /// Результат, отсортированный по частоте.
     const std::vector<entry>& entries() const noexcept { return entries_; }
 
 private:
+    /// Пересобирает отсортированный вектор entries_ из freq_.
+    void rebuildEntries();
+
+    std::unordered_map<std::string, std::size_t> freq_;
     std::vector<entry> entries_;
     std::size_t total_ = 0;
 };
