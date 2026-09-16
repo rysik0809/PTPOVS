@@ -12,6 +12,7 @@ add_executable(app
     src/utf8_utils.cpp
     src/word_frequency.cpp
     src/word_index.cpp
+    src/algo_tasks.cpp
 )
 
 target_include_directories(app PRIVATE include)
