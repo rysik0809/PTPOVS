@@ -148,8 +148,6 @@ namespace utf8
 
     std::string toLower(std::string_view s)
     {
-        // Быстрый путь: слово не содержит ни [A-Z], ни байтов >= 0x80 —
-        // значит, нижний регистр уже достигнут. Копируем одним memcpy.
         bool needsWork = false;
         for (unsigned char c : s)
         {

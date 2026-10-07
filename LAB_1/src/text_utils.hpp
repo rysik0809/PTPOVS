@@ -86,7 +86,7 @@ bool decodeOne(std::string_view s, std::size_t& i, char32_t& cp) noexcept;
  * @brief Проверяет, считается ли кодпоинт «словесным».
  *
  * @param cp Кодпоинт.
- * 
+ *
  * @return true, если кодпоинт — часть слова.
  */
 bool isWordCodepoint(char32_t cp) noexcept;

@@ -1,3 +1,4 @@
+#include "i18n.hpp"
 #include "text_utils.hpp"
 #include "word_stats.hpp"
 #include "algo_tasks.hpp"
@@ -11,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -36,13 +38,14 @@ namespace
     }
 
     /// Печатает время работы алгоритма в миллисекундах.
-    void printTime(const char* label, double ms)
+    void printTime(std::string_view label, double ms)
     {
-        std::cout << "Время работы [" << label << "]: "
-                  << std::fixed << std::setprecision(3) << ms << " мс\n";
+        std::cout << i18n::tr("time.label") << label << i18n::tr("time.labelEnd")
+                  << std::fixed << std::setprecision(3) << ms
+                  << i18n::tr("time.unit") << '\n';
     }
 
-    std::string askLine(const std::string& prompt, const std::string& def = "")
+    std::string askLine(std::string_view prompt, std::string_view def = "")
     {
         while (true)
         {
@@ -52,20 +55,18 @@ namespace
 
             std::string line;
             if (!std::getline(std::cin, line))
-            { 
-                std::cout << '\n'; return def;
+            {
+                std::cout << '\n';
+                return std::string(def);
             }
-            if (line.empty() && !def.empty()) return def;
+            if (!line.empty()) return line;
+            if (!def.empty())  return std::string(def);
 
-            if (line.empty())
-            {  
-                std::cout << "Пустой ввод, попробуйте снова.\n"; continue; 
-            }
-            return line;
+            std::cout << i18n::tr("common.emptyInput") << '\n';
         }
     }
 
-    bool askYesNo(const std::string& prompt, bool def)
+    bool askYesNo(std::string_view prompt, bool def)
     {
         while (true)
         {
@@ -73,8 +74,9 @@ namespace
 
             std::string line;
             if (!std::getline(std::cin, line))
-            { 
-                std::cout << '\n'; return def;
+            {
+                std::cout << '\n';
+                return def;
             }
             if (line.empty()) return def;
 
@@ -84,31 +86,33 @@ namespace
             if (c == 'y') return true;
             if (c == 'n') return false;
 
-            std::cout << "Ответьте \"y\" или \"n\".\n";
+            std::cout << i18n::tr("common.yesNo") << '\n';
         }
     }
 
-    int askInt(const std::string& prompt, int def)
+    int askInt(std::string_view prompt, int def)
     {
         while (true)
         {
             std::cout << prompt << " [" << def << "]: ";
             std::string line;
             if (!std::getline(std::cin, line))
-            { 
-                std::cout << '\n'; return def;
+            {
+                std::cout << '\n';
+                return def;
             }
             if (line.empty()) return def;
 
-            try 
+            try
             {
                 std::size_t pos = 0;
                 const int v = std::stoi(line, &pos);
                 if (pos != line.size()) throw std::invalid_argument("tail");
                 return v;
-            } catch (...) 
+            }
+            catch (...)
             {
-                std::cout << "Некорректное число, попробуйте снова.\n";
+                std::cout << i18n::tr("common.badNumber") << '\n';
             }
         }
     }
@@ -117,13 +121,14 @@ namespace
     {
         while (true)
         {
-            std::cout << "Введите целые числа через пробел: ";
+            std::cout << i18n::tr("stl.promptVector");
             std::string line;
             if (!std::getline(std::cin, line)) return {};
 
             if (line.empty())
-            { 
-                std::cout << "Пустой ввод.\n"; continue; 
+            {
+                std::cout << i18n::tr("stl.emptyInput") << '\n';
+                continue;
             }
 
             std::istringstream is(line);
@@ -132,12 +137,14 @@ namespace
             while (is >> x) v.push_back(x);
 
             if (!is.eof())
-            { 
-                std::cout << "Некорректный ввод.\n"; continue; 
+            {
+                std::cout << i18n::tr("stl.invalidInput") << '\n';
+                continue;
             }
             if (v.empty())
-            { 
-                std::cout << "Не введено ни одного числа.\n"; continue; 
+            {
+                std::cout << i18n::tr("stl.noNumbers") << '\n';
+                continue;
             }
             return v;
         }
@@ -156,18 +163,18 @@ namespace
 
     void writeFrequencies(std::ostream& os, const wordFrequency& wf)
     {
-        os << "Всего слов       : " << wf.totalCount()  << '\n';
-        os << "Уникальных слов  : " << wf.uniqueCount() << '\n';
+        os << i18n::tr("freq.headerTotal")  << wf.totalCount()  << '\n';
+        os << i18n::tr("freq.headerUnique") << wf.uniqueCount() << '\n';
         os << '\n';
         for (const auto& e : wf.entries())
         {
             os << e.word << " - " << e.count << '\n';
-        }          
+        }
     }
 
     void writeIndex(std::ostream& os, const wordIndex& wi)
     {
-        os << "Уникальных слов  : " << wi.uniqueCount() << '\n';
+        os << i18n::tr("index.headerUnique") << wi.uniqueCount() << '\n';
         os << '\n';
         for (const auto& e : wi.entries())
         {
@@ -183,67 +190,69 @@ namespace
 
     void runFrequency()
     {
-        std::cout << "\n=== Подсчёт уникальных слов ===\n";
+        std::cout << '\n' << i18n::tr("freq.title") << '\n';
 
-        const std::string inPath = askLine("Путь к файлу", "test.txt");
+        const std::string inPath = askLine(i18n::tr("freq.promptFile"), "test.txt");
         fileBuffer file(inPath);
-        std::cout << "Загружено " << file.size() << " байт.\n";
+        std::cout << i18n::tr("common.loaded") << file.size()
+                  << i18n::tr("common.bytes") << '\n';
 
-        const bool ignore = askYesNo("Игнорировать регистр?", true);
+        const bool ignore = askYesNo(i18n::tr("freq.promptIgnoreCase"), true);
         const unsigned options = ignore ? wordFrequency::ignoreCase
                                         : wordFrequency::none;
 
-        const std::string outPath = askLine("Путь к файлу результата",
-                                            "result_freq.txt");
+        const std::string outPath =
+            askLine(i18n::tr("freq.promptOutput"), "result_freq.txt");
 
         const std::size_t threads = parallel::hardwareThreads();
-        std::cout << "Потоков: " << threads << '\n';
+        std::cout << i18n::tr("common.threads") << threads << '\n';
 
         wordFrequency wf;
         const double ms = timeMs([&] {
             wf.process(file.view(), options, threads);
         });
-        printTime("Задание 1 (подсчёт частот)", ms);
+        printTime(i18n::tr("freq.label"), ms);
 
         std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
         if (!out)
         {
-            throw std::runtime_error("Не удалось открыть: " + outPath);
+            throw std::runtime_error(i18n::tr("common.openError") + outPath);
         }
         writeFrequencies(out, wf);
         if (!out)
         {
-            throw std::runtime_error("Ошибка записи: " + outPath);
+            throw std::runtime_error(i18n::tr("common.writeError") + outPath);
         }
-        std::cout << "Результат записан в " << outPath << '\n';
+        std::cout << i18n::tr("common.resultWritten") << outPath << '\n';
     }
 
     void runIndex()
     {
-        std::cout << "\n=== Индексация позиций слов ===\n";
+        std::cout << '\n' << i18n::tr("index.title") << '\n';
 
-        const std::string inPath = askLine("Путь к файлу", "test.txt");
+        const std::string inPath = askLine(i18n::tr("freq.promptFile"), "test.txt");
         fileBuffer file(inPath);
-        std::cout << "Загружено " << file.size() << " байт.\n";
+        std::cout << i18n::tr("common.loaded") << file.size()
+                  << i18n::tr("common.bytes") << '\n';
 
         if (file.size() > kMaxIndexFileSize)
         {
             std::ostringstream msg;
-            msg << "Файл слишком большой для индексации позиций: "
-                << file.size() << " байт ("
-                << (file.size() >> 20) << " МБ). "
-                << "Максимум — " << (kMaxIndexFileSize >> 20)
-                << " МБ. Используйте задачу 1 (подсчёт частот) — "
-                << "она умеет работать чанками.";
+            msg << i18n::tr("index.tooLarge")
+                << file.size() << " ("
+                << (file.size() >> 20) << " MB). "
+                << i18n::tr("index.maxSize")
+                << (kMaxIndexFileSize >> 20)
+                << i18n::tr("index.useTask1");
             throw std::runtime_error(msg.str());
         }
 
-        const bool ignore = askYesNo("Игнорировать регистр?", true);
+        const bool ignore = askYesNo(i18n::tr("freq.promptIgnoreCase"), true);
         const unsigned options = ignore ? wordIndex::ignoreCase
                                         : wordIndex::none;
 
         const std::size_t threads = parallel::hardwareThreads();
-        std::cout << "Потоков: " << threads << '\n';
+        std::cout << i18n::tr("common.threads") << threads << '\n';
 
         wordIndex wi;
 
@@ -254,36 +263,33 @@ namespace
             }
             catch (const std::bad_alloc&)
             {
-                throw std::runtime_error(
-                    "Не хватило памяти для построения индекса. "
-                    "Файл слишком большой для задачи 2 — "
-                    "используйте задачу 1 (подсчёт частот).");
+                throw std::runtime_error(i18n::tr("index.noMemory"));
             }
         });
-        printTime("Задание 2 (индексация)", ms);
+        printTime(i18n::tr("index.label"), ms);
 
-        const std::string outPath = askLine("Путь к файлу результата",
-                                            "result_index.txt");
+        const std::string outPath =
+            askLine(i18n::tr("freq.promptOutput"), "result_index.txt");
         std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
         if (!out)
         {
-            throw std::runtime_error("Не удалось открыть: " + outPath);
+            throw std::runtime_error(i18n::tr("common.openError") + outPath);
         }
         writeIndex(out, wi);
         if (!out)
         {
-            throw std::runtime_error("Ошибка записи: " + outPath);
+            throw std::runtime_error(i18n::tr("common.writeError") + outPath);
         }
-        std::cout << "Результат записан в " + outPath << '\n';
+        std::cout << i18n::tr("common.resultWritten") << outPath << '\n';
     }
 
     void runStlTasks()
     {
-        std::cout << "\n=== STL-задачи над vector<int> ===\n";
+        std::cout << '\n' << i18n::tr("stl.title") << '\n';
 
         const std::vector<int> source = askIntVector();
 
-        std::cout << "Исходный вектор      : ";
+        std::cout << i18n::tr("stl.source");
         printIntVector(std::cout, source);
         std::cout << '\n';
 
@@ -293,7 +299,7 @@ namespace
             squared = algo_tasks::squarePrimes(source);
         });
 
-        std::cout << "Простые в квадрат    : ";
+        std::cout << i18n::tr("stl.squared");
         printIntVector(std::cout, squared);
         std::cout << '\n';
 
@@ -302,48 +308,60 @@ namespace
             algo_tasks::sortOddAscEvenDesc(sorted);
         });
 
-        std::cout << "Нечёт/чёт сортировка : ";
+        std::cout << i18n::tr("stl.sorted");
         printIntVector(std::cout, sorted);
         std::cout << '\n';
 
-        const int lo = askInt("Нижняя граница диапазона", 0);
-        const int hi = askInt("Верхняя граница диапазона", 10);
+        const int lo = askInt(i18n::tr("stl.promptLo"), 0);
+        const int hi = askInt(i18n::tr("stl.promptHi"), 10);
 
         std::vector<int> inRange;
         const double msRange = timeMs([&] {
             inRange = algo_tasks::uniqueInRange(source, lo, hi);
         });
 
-        std::cout << "Уникальные в [" << lo << ", " << hi << "]: ";
+        std::cout << i18n::tr("stl.uniquePrefix") << lo << ", " << hi
+                  << i18n::tr("stl.uniqueSuffix");
         printIntVector(std::cout, inRange);
         std::cout << '\n';
 
-        printTime("3a (простые в квадрат)",   msSquare);
-        printTime("3b (нечёт/чёт сортировка)", msSort);
-        printTime("3c (уникальные в диапазоне)", msRange);
-        printTime("Задание 3 (всего)",          msSquare + msSort + msRange);
+        printTime(i18n::tr("stl.label3a"), msSquare);
+        printTime(i18n::tr("stl.label3b"), msSort);
+        printTime(i18n::tr("stl.label3c"), msRange);
+        printTime(i18n::tr("stl.label3Total"), msSquare + msSort + msRange);
 
-        if (askYesNo("Записать результат в файл?", false))
+        if (askYesNo(i18n::tr("stl.promptWriteFile"), false))
         {
-            const std::string outPath = askLine("Путь к файлу результата",
-                                                "result_stl.txt");
+            const std::string outPath =
+                askLine(i18n::tr("stl.promptOutput"), "result_stl.txt");
             std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
             if (!out)
             {
-                throw std::runtime_error("Не удалось открыть: " + outPath);
+                throw std::runtime_error(i18n::tr("common.openError") + outPath);
             }
-            out << "Исходный вектор      : "; printIntVector(out, source);  out << '\n';
-            out << "Простые в квадрат    : "; printIntVector(out, squared); out << '\n';
-            out << "Нечёт/чёт сортировка : "; printIntVector(out, sorted);  out << '\n';
-            out << "Уникальные в [" << lo << ", " << hi << "]: ";
+
+            out << i18n::tr("stl.source");
+            printIntVector(out, source);
+            out << '\n';
+
+            out << i18n::tr("stl.squared");
+            printIntVector(out, squared);
+            out << '\n';
+
+            out << i18n::tr("stl.sorted");
+            printIntVector(out, sorted);
+            out << '\n';
+
+            out << i18n::tr("stl.uniquePrefix") << lo << ", " << hi
+                << i18n::tr("stl.uniqueSuffix");
             printIntVector(out, inRange);
             out << '\n';
 
             if (!out)
             {
-                throw std::runtime_error("Ошибка записи: " + outPath);
+                throw std::runtime_error(i18n::tr("common.writeError") + outPath);
             }
-            std::cout << "Результат записан в " + outPath << '\n';
+            std::cout << i18n::tr("common.resultWritten") << outPath << '\n';
         }
     }
 
@@ -351,15 +369,20 @@ namespace
 
 int main()
 {
+    i18n::init();
+
+    std::cout << i18n::tr("common.language")
+              << i18n::currentLanguage() << '\n';
+
     while (true)
     {
-        std::cout << "\n=== Меню ===\n";
-        std::cout << "1. Подсчёт уникальных слов\n";
-        std::cout << "2. Индексация позиций слов\n";
-        std::cout << "3. STL-задачи над vector<int>\n";
-        std::cout << "0. Выход\n";
+        std::cout << '\n' << i18n::tr("menu.title") << '\n';
+        std::cout << i18n::tr("menu.freq")  << '\n';
+        std::cout << i18n::tr("menu.index") << '\n';
+        std::cout << i18n::tr("menu.stl")   << '\n';
+        std::cout << i18n::tr("menu.exit")  << '\n';
 
-        const std::string choice = askLine("Выбор", "0");
+        const std::string choice = askLine(i18n::tr("menu.prompt"), "0");
 
         try
         {
@@ -367,11 +390,11 @@ int main()
             if (choice == "1") { runFrequency(); continue; }
             if (choice == "2") { runIndex();     continue; }
             if (choice == "3") { runStlTasks();  continue; }
-            std::cout << "Неизвестный пункт меню.\n";
+            std::cout << i18n::tr("menu.unknown") << '\n';
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Исключение: " << e.what() << '\n';
+            std::cerr << i18n::tr("common.exception") << e.what() << '\n';
         }
     }
     return 0;

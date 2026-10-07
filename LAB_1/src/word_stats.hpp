@@ -33,7 +33,7 @@ public:
     /**
      * @brief Считает частоты в памяти.
      * @param text     Исходный текст в UTF-8.
-     * @param options  Опции обработки (см. options).
+     * @param options  Опции обработки.
      * @param nThreads Число потоков, ≥ 1.
      *
      * @note Состояние очищается в начале работы.
@@ -77,8 +77,7 @@ private:
  * @brief Для каждого уникального слова хранит позиции в тексте.
  *
  * @warning Хранит все позиции всех вхождений — на больших файлах
- *          легко упирается в RAM. Для файлов свыше ~1 ГБ не
- *          предназначен; используйте wordFrequency.
+ *          легко упирается в RAM.
  */
 class wordIndex
 {
@@ -105,7 +104,7 @@ public:
      * @brief Строит индекс позиций.
      *
      * @param text     Исходный текст в UTF-8.
-     * @param options  Опции обработки (см. options).
+     * @param options  Опции обработки.
      * @param nThreads Число потоков, ≥ 1.
      */
     void process(std::string_view text, unsigned options = none,
