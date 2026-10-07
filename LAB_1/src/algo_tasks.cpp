@@ -15,7 +15,7 @@ namespace algo_tasks
         for (int d = 3; 1LL * d * d <= n; d += 2)
         {
             if (n % d == 0) return false;
-        }    
+        }
 
         return true;
     }

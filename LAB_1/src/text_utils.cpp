@@ -15,9 +15,9 @@ fileBuffer::fileBuffer(const std::string& path)
     {
         throw std::runtime_error("Не удалось открыть файл: " + path);
     }
-        
+
     struct stat st{};
-    if (::fstat(fd_, &st) != 0) 
+    if (::fstat(fd_, &st) != 0)
     {
         ::close(fd_); fd_ = -1;
         throw std::runtime_error("fstat: " + path);
@@ -28,7 +28,7 @@ fileBuffer::fileBuffer(const std::string& path)
     size_ = static_cast<std::size_t>(st.st_size);
 
     void* p = ::mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
-    if (p == MAP_FAILED) 
+    if (p == MAP_FAILED)
     {
         ::close(fd_); fd_ = -1; size_ = 0;
         throw std::runtime_error("mmap: " + path);
@@ -40,12 +40,12 @@ fileBuffer::fileBuffer(const std::string& path)
 
 void fileBuffer::close() noexcept
 {
-    if (data_) 
-    { 
-        ::munmap(const_cast<char*>(data_), size_); data_ = nullptr; 
+    if (data_)
+    {
+        ::munmap(const_cast<char*>(data_), size_); data_ = nullptr;
     }
     if (fd_ >= 0)
-    { 
+    {
         ::close(fd_); fd_ = -1;
     }
     size_ = 0;
@@ -68,10 +68,10 @@ fileBuffer& fileBuffer::operator=(fileBuffer&& o) noexcept
     return *this;
 }
 
-namespace utf8 
+namespace utf8
 {
 
-    namespace 
+    namespace
     {
 
         void appendUtf8(std::string& out, char32_t cp)
@@ -109,10 +109,10 @@ namespace utf8
 
         const auto c0 = static_cast<unsigned char>(s[i]);
 
-        if (c0 < 0x80) 
+        if (c0 < 0x80)
         {
-            cp = c0; ++i; 
-            return true; 
+            cp = c0; ++i;
+            return true;
         }
 
         std::size_t len = 0;
@@ -148,6 +148,15 @@ namespace utf8
 
     std::string toLower(std::string_view s)
     {
+        // Быстрый путь: слово не содержит ни [A-Z], ни байтов >= 0x80 —
+        // значит, нижний регистр уже достигнут. Копируем одним memcpy.
+        bool needsWork = false;
+        for (unsigned char c : s)
+        {
+            if ((c >= 'A' && c <= 'Z') || c >= 0x80) { needsWork = true; break; }
+        }
+        if (!needsWork) return std::string(s);
+
         std::string out;
         out.reserve(s.size());
 
@@ -163,7 +172,7 @@ namespace utf8
                 i = start + 1;
                 continue;
             }
-            
+
             appendUtf8(out, toLowerCp(cp));
         }
         return out;
@@ -171,10 +180,10 @@ namespace utf8
 
 } // namespace utf8
 
-namespace parallel 
+namespace parallel
 {
 
-    namespace 
+    namespace
     {
 
         std::size_t adjustBoundary(std::string_view text, std::size_t pos)
@@ -184,8 +193,8 @@ namespace parallel
                 std::size_t i = pos;
                 char32_t cp = 0;
 
-                if (!utf8::decodeOne(text, i, cp)) 
-                { 
+                if (!utf8::decodeOne(text, i, cp))
+                {
                     ++pos; continue;
                 }
 
@@ -210,12 +219,12 @@ namespace parallel
         if (n == 0)
         {
             n = 1;
-        } 
+        }
 
         const std::size_t len = text.size();
         if (len < n * 4096)
         {
-            n = 1;     
+            n = 1;
         }
         chunks.reserve(n);
 

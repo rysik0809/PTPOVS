@@ -31,38 +31,15 @@ public:
     };
 
     /**
-     * @brief Считает частоты в памяти (для небольших файлов).
+     * @brief Считает частоты в памяти.
      * @param text     Исходный текст в UTF-8.
      * @param options  Опции обработки (см. options).
      * @param nThreads Число потоков, ≥ 1.
-     * 
-     * @note После возврата результат доступен через entries(),
-     *       uniqueCount() и totalCount().
+     *
+     * @note Состояние очищается в начале работы.
      */
     void process(std::string_view text, unsigned options = none,
                  std::size_t nThreads = 1);
-
-    /**
-     * @brief Считает частоты через temp-файлы (для больших файлов).
-     *
-     * @param text             Исходный текст в UTF-8.
-     * @param tmpDir           Каталог для temp-файлов.
-     * @param outPath          Путь к выходному текстовому отчёту.
-     * @param options          Опции обработки.
-     * @param targetChunkBytes Желаемый размер чанка в байтах.
-     * 
-     * @warning Требуется достаточно места на диске под temp-файлы.
-     */
-    void processChunked(std::string_view text,
-                        const std::string& tmpDir,
-                        const std::string& outPath,
-                        unsigned options = none,
-                        std::size_t targetChunkBytes = 512ull * 1024 * 1024);
-
-    /**
-     * @brief Сбрасывает всё состояние к исходному.
-     */
-    void reset() noexcept;
 
     /**
      * @brief Число уникальных слов в последнем результате.
@@ -85,6 +62,8 @@ public:
 private:
     /**
      * @brief Пересобирает @c entries_ из @c freq_ и сортирует.
+     * @note Строки перемещаются из @c freq_ — после вызова она
+     *       содержит перемещённые ключи в неопределённом состоянии.
      */
     void rebuildEntries();
 
@@ -96,7 +75,7 @@ private:
 
 /**
  * @brief Для каждого уникального слова хранит позиции в тексте.
- * 
+ *
  * @warning Хранит все позиции всех вхождений — на больших файлах
  *          легко упирается в RAM. Для файлов свыше ~1 ГБ не
  *          предназначен; используйте wordFrequency.
@@ -128,17 +107,9 @@ public:
      * @param text     Исходный текст в UTF-8.
      * @param options  Опции обработки (см. options).
      * @param nThreads Число потоков, ≥ 1.
-     *
-     * @note После возврата результат доступен через entries()
-     *       и uniqueCount().
      */
     void process(std::string_view text, unsigned options = none,
                  std::size_t nThreads = 1);
-
-    /**
-     * @brief Сбрасывает индекс к исходному состоянию.
-     */
-    void reset() noexcept;
 
     /**
      * @brief Число уникальных слов в индексе.
@@ -150,8 +121,7 @@ public:
      * @brief Все записи индекса в порядке первого появления.
      *
      * @return Константная ссылка на внутренний вектор.
-     * @warning Ссылка инвалидируется после вызова process()
-     *          или reset().
+     * @warning Ссылка инвалидируется после вызова process().
      */
     const std::vector<entry>& entries() const noexcept { return entries_; }
 
