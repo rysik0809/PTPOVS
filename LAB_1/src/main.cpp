@@ -19,7 +19,7 @@
 namespace 
 {
 
-    constexpr std::size_t kMaxIndexFileSize = 1024ull * 1024 * 1024; // 1 ГБ
+    constexpr std::size_t kMaxIndexFileSize = 1024ull * 1024 * 1024;
 
     /**
      * @brief Замеряет время работы вызываемого объекта.
@@ -37,7 +37,6 @@ namespace
         return std::chrono::duration<double, std::milli>(end - start).count();
     }
 
-    /// Печатает время работы алгоритма в миллисекундах.
     void printTime(std::string_view label, double ms)
     {
         std::cout << i18n::tr("time.label") << label << i18n::tr("time.labelEnd")
