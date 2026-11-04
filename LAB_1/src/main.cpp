@@ -21,18 +21,11 @@ namespace
 
     constexpr std::size_t kMaxIndexFileSize = 1024ull * 1024 * 1024;
 
-    /**
-     * @brief Замеряет время работы вызываемого объекта.
-     *
-     * @tparam Fn Тип callable. Должен вызываться без аргументов.
-     * @param fn  Что выполнить.
-     * @return Время в миллисекундах.
-     */
     template <class Fn>
     double timeMs(Fn&& fn)
     {
         const auto start = std::chrono::steady_clock::now();
-        std::forward<Fn>(fn)();
+        fn();
         const auto end = std::chrono::steady_clock::now();
         return std::chrono::duration<double, std::milli>(end - start).count();
     }
@@ -292,9 +285,8 @@ namespace
         printIntVector(std::cout, source);
         std::cout << '\n';
 
-        double msSquare = 0.0;
         std::vector<int> squared;
-        msSquare = timeMs([&] {
+        const double msSquare = timeMs([&] {
             squared = algo_tasks::squarePrimes(source);
         });
 

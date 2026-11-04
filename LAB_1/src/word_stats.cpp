@@ -9,7 +9,6 @@ void wordFrequency::process(std::string_view text, unsigned options,
                             std::size_t nThreads)
 {
     freq_.clear();
-    entries_.clear();
     total_ = 0;
 
     if (nThreads <= 1)
@@ -33,7 +32,7 @@ void wordFrequency::process(std::string_view text, unsigned options,
     std::vector<std::thread> threads;
     threads.reserve(n);
 
-    for (std::size_t t = 0; t < n; ++t)
+    for (std::size_t t = 0; t < n; t++)
     {
         threads.emplace_back([&, t] {
             const auto [b, e] = chunks[t];
@@ -53,8 +52,7 @@ void wordFrequency::process(std::string_view text, unsigned options,
     }
     for (auto& th : threads) th.join();
 
-    // Слияние локальных карт в глобальную
-    for (std::size_t t = 0; t < n; ++t)
+    for (std::size_t t = 0; t < n; t++)
     {
         total_ += totals[t];
         for (auto& kv : maps[t])

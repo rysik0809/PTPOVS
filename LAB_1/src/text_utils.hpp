@@ -71,70 +71,66 @@ private:
  */
 namespace utf8 {
 
-/**
- * @brief Декодирует одну кодовую точку UTF-8.
- * @param[in]     s   Исходная строка.
- * @param[in,out] i   Позиция начала кодпоинта.
- * @param[out]    cp  Декодированный кодпоинт.
- * @return true при успехе; false — битый байт или обрыв.
- * @note Не валидирует overlong-последовательности и суррогаты —
- *       для задач подсчёта слов это не критично.
- */
-bool decodeOne(std::string_view s, std::size_t& i, char32_t& cp) noexcept;
+    /**
+     * @brief Декодирует одну кодовую точку UTF-8.
+     * @param s   Исходная строка.
+     * @param i   Позиция начала кодпоинта.
+     * @param cp  Декодированный кодпоинт.
+     * @return true при успехе; false — битый байт или обрыв.
+     */
+    bool decodeOne(std::string_view s, std::size_t& i, char32_t& cp) noexcept;
 
-/**
- * @brief Проверяет, считается ли кодпоинт «словесным».
- *
- * @param cp Кодпоинт.
- *
- * @return true, если кодпоинт — часть слова.
- */
-bool isWordCodepoint(char32_t cp) noexcept;
+    /**
+     * @brief Проверяет, считается ли кодпоинт «словесным».
+     * @param cp Кодпоинт.
+     * @return true, если кодпоинт — часть слова.
+     */
+    bool isWordCodepoint(char32_t cp) noexcept;
 
-/**
- * @brief Приводит UTF-8-строку к нижнему регистру.
- * @param s Исходная строка в UTF-8.
- * @return Новая строка в нижнем регистре.
- * @note Битые байты копируются как есть — функция не бросает.
- */
-std::string toLower(std::string_view s);
+    /**
+     * @brief Приводит UTF-8-строку к нижнему регистру.
+     * @param s Исходная строка в UTF-8.
+     * @return Новая строка в нижнем регистре.
+     * @note Битые байты копируются как есть — функция не бросает.
+     */
+    std::string toLower(std::string_view s);
 
-/**
- * @brief Обходит все слова текста, вызывая @p fn на каждом.
- * @tparam Fn Тип callback'а. Должен принимать std::string_view.
- * @param text Исходный текст в UTF-8.
- * @param fn   Callback. Получает string_view — «окно» в исходный
- *             текст без копирования.
- */
-template <class Fn>
-void forEachWord(std::string_view text, Fn&& fn)
-{
-    std::size_t i = 0;
-    while (i < text.size())
+    /**
+     * @brief Обходит все слова текста, вызывая @p fn на каждом.
+     * @tparam Fn Тип callback'а. Должен принимать std::string_view.
+     * @param text Исходный текст в UTF-8.
+     * @param fn   Callback. Получает string_view — «окно» в исходный
+     *             текст без копирования.
+     */
+    template <class Fn>
+    void forEachWord(std::string_view text, Fn&& fn)
     {
-        const std::size_t start = i;
-        char32_t cp = 0;
-
-        // Пропускаем всё, что не является началом слова:
-        // разделители и битые байты
-        if (!decodeOne(text, i, cp)) { ++i; continue; }
-        if (!isWordCodepoint(cp))    continue;
-
-        // Тянем слово до первого не-словесного кодпоинта.
-        // Если встретили битый байт — откатываемся на save, чтобы
-        // он не попал внутрь слова
+        std::size_t i = 0;
         while (i < text.size())
         {
-            const std::size_t save = i;
-            if (!decodeOne(text, i, cp) || !isWordCodepoint(cp))
+            const std::size_t start = i;
+            char32_t cp = 0;
+
+            // Пропускаем всё, что не является началом слова:
+            // разделители и битые байты
+            if (!decodeOne(text, i, cp)) { ++i; continue; }
+            if (!isWordCodepoint(cp))    continue;
+
+            // Тянем слово до первого не-словесного кодпоинта.
+            // Если встретили битый байт — откатываемся на save, чтобы
+            // он не попал внутрь слова
+            while (i < text.size())
             {
-                i = save;
-                break;
+                const std::size_t save = i;
+                if (!decodeOne(text, i, cp) || !isWordCodepoint(cp))
+                {
+                    i = save;
+                    break;
+                }
             }
+            fn(text.substr(start, i - start));
         }
-        fn(text.substr(start, i - start));
     }
-}
 
 } // namespace utf8
 
@@ -143,24 +139,24 @@ void forEachWord(std::string_view text, Fn&& fn)
  */
 namespace parallel {
 
-/**
- * @brief Полуинтервал [begin, end) — границы чанка в исходном тексте.
- */
-using Chunk = std::pair<std::size_t, std::size_t>;
+    /**
+     * @brief Полуинтервал [begin, end) — границы чанка в исходном тексте.
+     */
+    using Chunk = std::pair<std::size_t, std::size_t>;
 
-/**
- * @brief Разбивает текст на @p n чанков по границам слов.
- * @param text Исходный текст.
- * @param n    Желаемое число чанков (минимум 1).
- * @return Вектор непересекающихся полуинтервалов, покрывающих
- *         весь текст.
- */
-std::vector<Chunk> splitChunks(std::string_view text, std::size_t n);
+    /**
+     * @brief Разбивает текст на @p n чанков по границам слов.
+     * @param text Исходный текст.
+     * @param n    Желаемое число чанков (минимум 1).
+     * @return Вектор непересекающихся полуинтервалов, покрывающих
+     *         весь текст.
+     */
+    std::vector<Chunk> splitChunks(std::string_view text, std::size_t n);
 
-/**
- * @brief Возвращает число аппаратных потоков.
- * @return Количество логических ядер, минимум 1.
- */
-std::size_t hardwareThreads();
+    /**
+     * @brief Возвращает число аппаратных потоков.
+     * @return Количество логических ядер, минимум 1.
+     */
+    std::size_t hardwareThreads();
 
 } // namespace parallel

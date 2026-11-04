@@ -15,7 +15,6 @@ namespace i18n {
 
 namespace {
 
-/// Возвращает язык системы в виде строки: "ru_RU", "ru-RU", "C" и т.п.
 std::string detectSystemLanguage()
 {
 #ifdef _WIN32
@@ -29,7 +28,7 @@ std::string detectSystemLanguage()
             std::string s(static_cast<std::size_t>(need - 1), '\0');
             WideCharToMultiByte(CP_UTF8, 0, buf, -1,
                                 s.data(), need, nullptr, nullptr);
-            return s;  // например, "ru-RU"
+            return s;  
         }
     }
     return "en-US";
@@ -40,7 +39,7 @@ std::string detectSystemLanguage()
         {
             std::string s = v;
             if (auto dot = s.find('.'); dot != std::string::npos)
-                s.resize(dot);          // "ru_RU.UTF-8" → "ru_RU"
+                s.resize(dot);          
             return s;
         }
     }
@@ -48,7 +47,6 @@ std::string detectSystemLanguage()
 #endif
 }
 
-/// "ru_RU" / "ru-RU" / "ru" → "ru"; "C" / "POSIX" → "en".
 std::string normalizeLang(const std::string& s)
 {
     if (s.empty()) return "en";
@@ -100,9 +98,7 @@ const std::string& tr(const char* key)
     if (it != g_strings.end()) return it->second;
 
     static std::unordered_map<std::string, std::string> fallback;
-    auto [it2, inserted] = fallback.try_emplace(key, key);
-    (void)inserted;
-    return it2->second;
+    return fallback.try_emplace(key, key).first->second;
 }
 
 std::string_view currentLanguage() noexcept

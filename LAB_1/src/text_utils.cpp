@@ -19,7 +19,8 @@ fileBuffer::fileBuffer(const std::string& path)
     struct stat st{};
     if (::fstat(fd_, &st) != 0)
     {
-        ::close(fd_); fd_ = -1;
+        ::close(fd_); 
+        fd_ = -1;
         throw std::runtime_error("fstat: " + path);
     }
 
@@ -30,7 +31,9 @@ fileBuffer::fileBuffer(const std::string& path)
     void* p = ::mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
     if (p == MAP_FAILED)
     {
-        ::close(fd_); fd_ = -1; size_ = 0;
+        ::close(fd_); 
+        fd_ = -1; 
+        size_ = 0;
         throw std::runtime_error("mmap: " + path);
     }
     data_ = static_cast<const char*>(p);
@@ -42,31 +45,18 @@ void fileBuffer::close() noexcept
 {
     if (data_)
     {
-        ::munmap(const_cast<char*>(data_), size_); data_ = nullptr;
+        ::munmap(const_cast<char*>(data_), size_); 
+        data_ = nullptr;
     }
     if (fd_ >= 0)
     {
-        ::close(fd_); fd_ = -1;
+        ::close(fd_); 
+        fd_ = -1;
     }
     size_ = 0;
 }
 
 fileBuffer::~fileBuffer() { close(); }
-
-fileBuffer::fileBuffer(fileBuffer&& o) noexcept
-    : data_(o.data_), size_(o.size_), fd_(o.fd_)
-{
-    o.data_ = nullptr; o.size_ = 0; o.fd_ = -1;
-}
-
-fileBuffer& fileBuffer::operator=(fileBuffer&& o) noexcept
-{
-    if (this == &o) return *this;
-    close();
-    data_ = o.data_; size_ = o.size_; fd_ = o.fd_;
-    o.data_ = nullptr; o.size_ = 0; o.fd_ = -1;
-    return *this;
-}
 
 namespace utf8
 {
@@ -193,7 +183,8 @@ namespace parallel
 
                 if (!utf8::decodeOne(text, i, cp))
                 {
-                    ++pos; continue;
+                    ++pos; 
+                    continue;
                 }
 
                 if (!utf8::isWordCodepoint(cp))   return pos;
@@ -214,10 +205,6 @@ namespace parallel
     std::vector<Chunk> splitChunks(std::string_view text, std::size_t n)
     {
         std::vector<Chunk> chunks;
-        if (n == 0)
-        {
-            n = 1;
-        }
 
         const std::size_t len = text.size();
         if (len < n * 4096)
@@ -227,7 +214,7 @@ namespace parallel
         chunks.reserve(n);
 
         std::size_t begin = 0;
-        for (std::size_t i = 0; i + 1 < n; ++i)
+        for (std::size_t i = 0; i < n - 1; ++i)
         {
             const std::size_t target = (i + 1) * len / n;
             const std::size_t end = adjustBoundary(text, target);
