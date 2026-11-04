@@ -2,100 +2,157 @@
 #include "person.h"
 #include "random_generator.h"
 
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <locale>
+#include <chrono>       
+#include <filesystem>  
+#include <fstream>      
+#include <iomanip>     
+#include <iostream>     
+#include <limits>      
+#include <locale>      
 #include <string>
-#include <system_error>
+#include <system_error> 
 
 namespace fs = std::filesystem;
 
-namespace {
-
-std::string trim(const std::string& s) {
+namespace 
+{
+/// trim — обрезает по краям строки пробельные символы и кавычки.
+std::string trim(const std::string& s) 
+{
     const char* ws = " \t\r\n\"'";
     std::size_t first = s.find_first_not_of(ws);
+
     if (first == std::string::npos)
         return "";
+
     std::size_t last = s.find_last_not_of(ws);
     return s.substr(first, last - first + 1);
 }
 
+/// formatDuration — превращает длительность в человекочитаемую строку.
+/// Точность 3 знака после запятой — миллисекунды.
+std::string formatDuration(std::chrono::duration<double> d) 
+{
+    using namespace std::chrono;
+    auto totalSec = d.count();
+
+    if (totalSec < 60.0) 
+    {
+        std::ostringstream os;
+        os << std::fixed << std::setprecision(3) << totalSec << " с";
+        return os.str();
+    }
+
+    /// Раскладываем секунды на часы / минуты / доли секунды
+    long long totalSecInt = static_cast<long long>(totalSec);
+    long long hours   = totalSecInt / 3600;
+    long long minutes = (totalSecInt % 3600) / 60;
+    double    seconds = totalSec - static_cast<double>(hours * 3600 + minutes * 60);
+
+    std::ostringstream os;
+    os << std::fixed << std::setprecision(3);
+    if (hours > 0)
+        os << hours << " ч " << std::setw(2) << std::setfill('0') << minutes
+           << " мин " << std::setw(6) << std::setfill('0') << seconds << " с";
+    else
+        os << minutes << " мин " << std::setw(6) << std::setfill('0')
+           << seconds << " с";
+    return os.str();
+}
+
 } // namespace
 
-int main() {
+int main() 
+{
     std::locale::global(std::locale(""));
 
-    std::cout << "=== Лабораторная работа №2. Вариант 2: Markdown ===\n\n";
+    std::cout << "Лабораторная работа №2. Вариант 2: Markdown\n\n";
 
-    // ---------- 1. Путь к входному файлу ----------
-    std::cout << "Введите путь к Markdown-файлу для анализа\n"
-                 "(например, example.md; Enter — example.md): ";
+    std::cout << "Введите путь к файлу для анализа (Enter — block.md): ";
     std::string inputPath;
-    std::getline(std::cin, inputPath);
-    inputPath = trim(inputPath);
+    std::getline(std::cin, inputPath);       
+    inputPath = trim(inputPath);             
     if (inputPath.empty())
-        inputPath = "example.md";
+        inputPath = "block.md";           
 
     std::error_code ec;
-    if (!fs::exists(inputPath, ec)) {
+    if (!fs::exists(inputPath, ec)) 
+    {
         std::cerr << "Ошибка: файл не найден: " << inputPath << "\n";
         return 1;
     }
 
-    // ---------- 2. Путь для сохранения файлов ----------
-    std::cout << "\nВведите путь к папке, куда будут сохранены результаты\n"
-                 "(results.txt и anketa.txt; Enter — текущая папка): ";
+    std::cout << "\nВведите путь к папке, куда будут сохранены результаты (Enter — текущая папка): ";
     std::string outputDir;
     std::getline(std::cin, outputDir);
     outputDir = trim(outputDir);
     if (outputDir.empty())
-        outputDir = ".";
+        outputDir = ".";                     
 
     fs::create_directories(outputDir, ec);
-    if (ec) {
+    if (ec) 
+    {
         std::cerr << "Не удалось создать папку " << outputDir
                   << ": " << ec.message() << "\n";
         return 1;
     }
 
-    fs::path resultsPath  = fs::path(outputDir) / "results.txt";
-    fs::path anketaPath   = fs::path(outputDir) / "anketa.txt";
+    fs::path resultsPath = fs::path(outputDir) / "results.txt";
+    fs::path anketaPath  = fs::path(outputDir) / "anketa.txt";
 
-    std::cout << "\nВходной файл:    " << inputPath           << "\n";
-    std::cout << "Файл результатов: " << resultsPath.string() << "\n";
-    std::cout << "Файл анкеты:      " << anketaPath.string()  << "\n\n";
+    std::cout << "\nВходной файл:     " << inputPath            << "\n";
+    std::cout << "Файл результатов: " << resultsPath.string()  << "\n";
+    std::cout << "Файл анкеты:      " << anketaPath.string()   << "\n\n";
 
-    // ---------- 3. Анализ Markdown + запись results.txt ----------
     AnalysisStats stats;
+    std::chrono::duration<double> elapsed{0};
+
     {
         std::ofstream resultsOut(resultsPath);
-        if (!resultsOut.is_open()) {
+        if (!resultsOut.is_open()) 
+        {
             std::cerr << "Не удалось открыть файл для записи: "
                       << resultsPath << "\n";
             return 1;
         }
+
+        auto tStart = std::chrono::steady_clock::now();
+
         stats = analyzeMarkdownFile(inputPath, resultsOut, 1024 * 1024);
-        resultsOut.close();
+
+        auto tEnd = std::chrono::steady_clock::now();
+        elapsed = std::chrono::duration<double>(tEnd - tStart);
+
+        resultsOut.close();   
     }
 
-    std::cout << "\nАнализ завершён.\n";
-    std::cout << "  Строк:              " << stats.totalLines   << "\n";
-    std::cout << "  Заголовков:         " << stats.headings     << "\n";
-    std::cout << "  Абзацев:            " << stats.paragraphs   << "\n";
-    std::cout << "  Элементов списков:  " << stats.listItems    << "\n";
-    std::cout << "  Строк с чужой разметкой: " << stats.foreignLines << "\n";
+    {
+        std::ofstream resultsAppend(resultsPath, std::ios::app);
+        if (resultsAppend.is_open()) 
+        {
+            resultsAppend << "\nВремя обработки\n";
+            resultsAppend << "Затрачено: " << formatDuration(elapsed) << "\n";
+            resultsAppend.close();
+        }
+    }
+
+    std::cout << "Анализ завершён.\n";
+    std::cout << "  Строк:                    " << stats.totalLines   << "\n";
+    std::cout << "  Заголовков:               " << stats.headings     << "\n";
+    std::cout << "  Абзацев:                  " << stats.paragraphs   << "\n";
+    std::cout << "  Элементов списков:        " << stats.listItems    << "\n";
+    std::cout << "  Строк с чужой разметкой:  " << stats.foreignLines << "\n";
+    std::cout << "  Время обработки:          " << formatDuration(elapsed)
+              << "\n";
     std::cout << "Результат записан в " << resultsPath.string() << "\n";
 
-    // ---------- 4. Анкета ----------
-    std::cout << "\n=== Проверка анкеты ===\n";
+    std::cout << "\nПроверка анкеты\n";
     std::cout << "1. Ввод вручную\n";
     std::cout << "2. Генерация случайных данных\n";
     std::cout << "Выберите режим (1/2): ";
     int mode = 1;
     std::cin >> mode;
+
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     Person raw;
@@ -111,10 +168,10 @@ int main() {
     Person normalized = raw;
     bool valid = validateAndNormalize(normalized);
 
-    // ---------- 5. Сохранение anketa.txt ----------
     {
         std::ofstream anketaOut(anketaPath);
-        if (!anketaOut.is_open()) {
+        if (!anketaOut.is_open()) 
+        {
             std::cerr << "Не удалось открыть файл для записи: "
                       << anketaPath << "\n";
             return 1;

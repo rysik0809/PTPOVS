@@ -7,9 +7,9 @@
 #include <regex>
 #include <vector>
 
-namespace {
+namespace 
+{
 
-// Сбросить накопленный абзац в поток и обнулить состояние.
 void flushParagraph(std::ostream& out,
                     AnalysisStats& stats,
                     bool& inParagraph,
@@ -18,7 +18,7 @@ void flushParagraph(std::ostream& out,
         return;
     out << "[P] ";
     for (char c : buffer)
-        out << (c == '\n' ? ' ' : c);   // многострочный абзац — в одну строку
+        out << (c == '\n' ? ' ' : c);   
     out << "\n";
     ++stats.paragraphs;
     buffer.clear();
@@ -27,9 +27,8 @@ void flushParagraph(std::ostream& out,
 
 } // namespace
 
-// ======================= ПРОВЕРКА ЯЗЫКА MARKDOWN ============================
-
-bool isForeignMarkup(const std::string& line) {
+bool isForeignMarkup(const std::string& line) 
+{
     std::size_t i = 0;
     while (i < line.size() &&
            std::isspace(static_cast<unsigned char>(line[i])))
@@ -59,15 +58,13 @@ bool isForeignMarkup(const std::string& line) {
     return false;
 }
 
-bool isValidMarkdownLine(const std::string& line) {
-    if (line.empty() ||
-        std::all_of(line.begin(), line.end(),
+bool isValidMarkdownLine(const std::string& line) 
+{
+    if (line.empty() || std::all_of(line.begin(), line.end(),
                     [](unsigned char ch) { return std::isspace(ch); }))
         return true;
     return !isForeignMarkup(line);
 }
-
-// ======================= ОБРАБОТКА ОДНОЙ СТРОКИ =============================
 
 void processLine(const std::string& line,
                  std::ostream& out,
@@ -82,9 +79,11 @@ void processLine(const std::string& line,
     bool mightBeHeading = false;
     bool mightBeList    = false;
 
-    if (i < line.size()) {
+    if (i < line.size()) 
+    {
         char c = line[i];
-        if (c == '#') {
+        if (c == '#') 
+        {
             mightBeHeading = true;
         } else if (c == '*' || c == '-' || c == '+') {
             mightBeList = true;
@@ -95,10 +94,11 @@ void processLine(const std::string& line,
 
     std::smatch match;
 
-    // ---------- Заголовки ----------
-    if (mightBeHeading) {
+    if (mightBeHeading) 
+    {
         static const std::regex headingRe(R"(^\s*(#{1,6})\s+(.+?)\s*$)");
-        if (std::regex_match(line, match, headingRe)) {
+        if (std::regex_match(line, match, headingRe)) 
+        {
             flushParagraph(out, stats, inParagraph, paragraphBuffer);
             int level = static_cast<int>(match[1].str().size());
             out << "[H" << level << "] " << match[2].str() << "\n";
@@ -107,18 +107,20 @@ void processLine(const std::string& line,
         }
     }
 
-    // ---------- Списки ----------
-    if (mightBeList) {
+    if (mightBeList) 
+    {
         static const std::regex unorderedListRe(R"(^\s*[*+-]\s+(.+)$)");
         static const std::regex orderedListRe(R"(^\s*\d+\.\s+(.+)$)");
 
-        if (std::regex_match(line, match, unorderedListRe)) {
+        if (std::regex_match(line, match, unorderedListRe)) 
+        {
             flushParagraph(out, stats, inParagraph, paragraphBuffer);
             out << "[UL] " << match[1].str() << "\n";
             ++stats.listItems;
             return;
         }
-        if (std::regex_match(line, match, orderedListRe)) {
+        if (std::regex_match(line, match, orderedListRe)) 
+        {
             flushParagraph(out, stats, inParagraph, paragraphBuffer);
             out << "[OL] " << match[1].str() << "\n";
             ++stats.listItems;
@@ -126,15 +128,16 @@ void processLine(const std::string& line,
         }
     }
 
-    // ---------- Абзацы ----------
     if (line.empty() ||
         std::all_of(line.begin(), line.end(),
-                    [](unsigned char ch) { return std::isspace(ch); })) {
+                    [](unsigned char ch) { return std::isspace(ch); })) 
+    {
         flushParagraph(out, stats, inParagraph, paragraphBuffer);
         return;
     }
 
-    if (!inParagraph) {
+    if (!inParagraph) 
+    {
         paragraphBuffer = line;
         inParagraph = true;
     } else {
@@ -142,15 +145,15 @@ void processLine(const std::string& line,
     }
 }
 
-// ======================= АНАЛИЗ ФАЙЛА (ПОТОКОВЫЙ) ===========================
-
 AnalysisStats analyzeMarkdownFile(const std::string& filename,
                                   std::ostream& out,
-                                  std::size_t blockSize) {
+                                  std::size_t blockSize) 
+{
     AnalysisStats stats;
 
     std::ifstream file(filename, std::ios::binary);
-    if (!file.is_open()) {
+    if (!file.is_open()) 
+    {
         std::cerr << "Ошибка: не удалось открыть файл " << filename << "\n";
         return stats;
     }
@@ -170,7 +173,8 @@ AnalysisStats analyzeMarkdownFile(const std::string& filename,
     constexpr std::size_t kWarnLimit = 100;
     std::size_t warned = 0;
 
-    while (file) {
+    while (file) 
+    {
         file.read(buffer.data(),
                   static_cast<std::streamsize>(buffer.size()));
         std::streamsize bytesRead = file.gcount();
@@ -181,19 +185,23 @@ AnalysisStats analyzeMarkdownFile(const std::string& filename,
 
         std::size_t start = 0;
         std::size_t pos;
-        while ((pos = data.find('\n', start)) != std::string::npos) {
+        while ((pos = data.find('\n', start)) != std::string::npos) 
+        {
             std::string line = data.substr(start, pos - start);
             if (!line.empty() && line.back() == '\r')
                 line.pop_back();
 
             ++stats.totalLines;
-            if (!isValidMarkdownLine(line)) {
+            if (!isValidMarkdownLine(line)) 
+            {
                 ++stats.foreignLines;
-                if (warned < kWarnLimit) {
+                if (warned < kWarnLimit) 
+                {
                     std::cerr << "Предупреждение: строка содержит чужую "
                                  "разметку: " << line << "\n";
                     ++warned;
-                    if (warned == kWarnLimit) {
+                    if (warned == kWarnLimit) 
+                    {
                         std::cerr << "... (дальнейшие предупреждения "
                                      "подавлены)\n";
                     }
@@ -207,14 +215,16 @@ AnalysisStats analyzeMarkdownFile(const std::string& filename,
             data.erase(0, start);
     }
 
-    // Последняя строка без завершающего '\n'
-    if (!data.empty()) {
+    if (!data.empty()) 
+    {
         if (data.back() == '\r')
             data.pop_back();
         ++stats.totalLines;
-        if (!isValidMarkdownLine(data)) {
+        if (!isValidMarkdownLine(data)) 
+        {
             ++stats.foreignLines;
-            if (warned < kWarnLimit) {
+            if (warned < kWarnLimit) 
+            {
                 std::cerr << "Предупреждение: строка содержит чужую "
                              "разметку: " << data << "\n";
             }
@@ -222,10 +232,8 @@ AnalysisStats analyzeMarkdownFile(const std::string& filename,
         processLine(data, out, stats, inParagraph, paragraphBuffer);
     }
 
-    // Закрыть последний абзац
     flushParagraph(out, stats, inParagraph, paragraphBuffer);
 
-    // Итоговая сводка
     out << "\n=== Итоги ===\n";
     out << "Строк обработано:          " << stats.totalLines << "\n";
     out << "Заголовков:                " << stats.headings << "\n";
@@ -233,12 +241,14 @@ AnalysisStats analyzeMarkdownFile(const std::string& filename,
     out << "Элементов списков:         " << stats.listItems << "\n";
     out << "Строк с чужой разметкой:   " << stats.foreignLines << "\n";
 
-    if (stats.foreignLines > 0) {
+    if (stats.foreignLines > 0) 
+    {
         std::cerr << "\nИтого: " << stats.foreignLines << " из "
                   << stats.totalLines << " строк содержат маркеры чужой "
                      "разметки";
         if (stats.totalLines > 0 &&
-            stats.foreignLines * 100 / stats.totalLines >= 50) {
+            stats.foreignLines * 100 / stats.totalLines >= 50) 
+        {
             std::cerr << ".\nОШИБКА: файл, похоже, не является Markdown "
                          "(AsciiDoc или HTML).\n";
         } else {

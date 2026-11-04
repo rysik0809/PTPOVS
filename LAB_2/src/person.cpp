@@ -6,11 +6,11 @@
 #include <iostream>
 #include <regex>
 
-// ======================= UTF-8 HELPERS ======================================
+namespace 
+{
 
-namespace {
-
-std::size_t utf8CharLen(unsigned char c) {
+std::size_t utf8CharLen(unsigned char c) 
+{
     if ((c & 0x80) == 0) return 1;
     if ((c & 0xE0) == 0xC0) return 2;
     if ((c & 0xF0) == 0xE0) return 3;
@@ -18,19 +18,23 @@ std::size_t utf8CharLen(unsigned char c) {
     return 1;
 }
 
-bool isRussianLetter(unsigned char b0, unsigned char b1) {
-    if (b0 == 0xD0 && b1 == 0x81) return true;                // Ё
-    if (b0 == 0xD0 && b1 >= 0x90 && b1 <= 0xBF) return true;  // А-п
-    if (b0 == 0xD1 && b1 >= 0x80 && b1 <= 0x8F) return true;  // р-я
-    if (b0 == 0xD1 && b1 == 0x91) return true;                // ё
+bool isRussianLetter(unsigned char b0, unsigned char b1) 
+{
+    if (b0 == 0xD0 && b1 == 0x81) return true;                
+    if (b0 == 0xD0 && b1 >= 0x90 && b1 <= 0xBF) return true;  
+    if (b0 == 0xD1 && b1 >= 0x80 && b1 <= 0x8F) return true;  
+    if (b0 == 0xD1 && b1 == 0x91) return true;                
     return false;
 }
 
-void cyrillicToUpper(std::string& s) {
+void cyrillicToUpper(std::string& s) 
+{
     if (s.size() != 2) return;
+
     unsigned char b0 = static_cast<unsigned char>(s[0]);
     unsigned char b1 = static_cast<unsigned char>(s[1]);
-    if (b0 == 0xD0 && b1 >= 0xB0 && b1 <= 0xBF) {
+    if (b0 == 0xD0 && b1 >= 0xB0 && b1 <= 0xBF) 
+    {
         s[1] = static_cast<char>(b1 - 0x20);
     } else if (b0 == 0xD1 && b1 >= 0x80 && b1 <= 0x8F) {
         s[0] = static_cast<char>(0xD0);
@@ -41,11 +45,14 @@ void cyrillicToUpper(std::string& s) {
     }
 }
 
-void cyrillicToLower(std::string& s) {
+void cyrillicToLower(std::string& s) 
+{
     if (s.size() != 2) return;
+
     unsigned char b0 = static_cast<unsigned char>(s[0]);
     unsigned char b1 = static_cast<unsigned char>(s[1]);
-    if (b0 == 0xD0 && b1 >= 0x90 && b1 <= 0x9F) {
+    if (b0 == 0xD0 && b1 >= 0x90 && b1 <= 0x9F) 
+    {
         s[1] = static_cast<char>(b1 + 0x20);
     } else if (b0 == 0xD0 && b1 >= 0xA0 && b1 <= 0xAF) {
         s[0] = static_cast<char>(0xD1);
@@ -58,14 +65,14 @@ void cyrillicToLower(std::string& s) {
 
 } // namespace
 
-// ======================= НОРМАЛИЗАЦИЯ =======================================
-
-std::string normalizeNamePart(const std::string& part) {
+std::string normalizeNamePart(const std::string& part) 
+{
     std::string result;
     std::size_t i = 0;
     bool capitalizeNext = true;
 
-    while (i < part.size()) {
+    while (i < part.size()) 
+    {
         unsigned char c = static_cast<unsigned char>(part[i]);
         std::size_t len = utf8CharLen(c);
         if (i + len > part.size())
@@ -75,8 +82,10 @@ std::string normalizeNamePart(const std::string& part) {
         bool keep     = false;
         bool isLetter = false;
 
-        if (len == 1) {
-            if (std::isalpha(c)) {
+        if (len == 1) 
+        {
+            if (std::isalpha(c)) 
+            {
                 keep = true;
                 isLetter = true;
             } else if (c == '-') {
@@ -85,7 +94,8 @@ std::string normalizeNamePart(const std::string& part) {
         } else if (len == 2) {
             unsigned char b0 = static_cast<unsigned char>(ch[0]);
             unsigned char b1 = static_cast<unsigned char>(ch[1]);
-            if (isRussianLetter(b0, b1)) {
+            if (isRussianLetter(b0, b1)) 
+            {
                 keep = true;
                 isLetter = true;
             }
@@ -119,7 +129,8 @@ std::string normalizeNamePart(const std::string& part) {
     return result;
 }
 
-std::string normalizeBirthDate(const std::string& input) {
+std::string normalizeBirthDate(const std::string& input) 
+{
     static const std::regex dateRe(R"((\d{1,4})\D+(\d{1,2})\D+(\d{1,4}))");
     std::smatch m;
     if (!std::regex_search(input, m, dateRe))
@@ -128,8 +139,10 @@ std::string normalizeBirthDate(const std::string& input) {
     std::string p1 = m[1], p2 = m[2], p3 = m[3];
     int year, month, day;
 
-    try {
-        if (p1.size() >= 4) {
+    try 
+    {
+        if (p1.size() >= 4) 
+        {
             year  = std::stoi(p1);
             month = std::stoi(p2);
             day   = std::stoi(p3);
@@ -151,9 +164,11 @@ std::string normalizeBirthDate(const std::string& input) {
     return std::string(buf);
 }
 
-std::string normalizePhone(const std::string& input) {
+std::string normalizePhone(const std::string& input) 
+{
     std::string digits;
-    for (char c : input) {
+    for (char c : input) 
+    {
         if (std::isdigit(static_cast<unsigned char>(c)))
             digits += c;
     }
@@ -166,7 +181,8 @@ std::string normalizePhone(const std::string& input) {
     return "+" + digits;
 }
 
-std::string normalizeEmail(const std::string& input) {
+std::string normalizeEmail(const std::string& input) 
+{
     std::string s = input;
     s.erase(std::remove(s.begin(), s.end(), '<'), s.end());
     s.erase(std::remove(s.begin(), s.end(), '>'), s.end());
@@ -180,9 +196,8 @@ std::string normalizeEmail(const std::string& input) {
     return "<" + s + ">";
 }
 
-// ======================= ВВОД / ВАЛИДАЦИЯ / ВЫВОД ===========================
-
-Person inputPerson() {
+Person inputPerson() 
+{
     Person p;
     std::cout << "Введите фамилию: ";
     std::getline(std::cin, p.surname);
@@ -199,9 +214,8 @@ Person inputPerson() {
     return p;
 }
 
-bool validateAndNormalize(Person& p) {
-    // Нормализуем все поля «на месте» — так даже при ошибке в anketa.txt
-    // будет видно, какое поле оказалось некорректным (станет пустым).
+bool validateAndNormalize(Person& p) 
+{
     p.surname    = normalizeNamePart(p.surname);
     p.name       = normalizeNamePart(p.name);
     p.patronymic = normalizeNamePart(p.patronymic);
@@ -209,26 +223,31 @@ bool validateAndNormalize(Person& p) {
     p.phone      = normalizePhone(p.phone);
     p.email      = normalizeEmail(p.email);
 
-    if (p.surname.empty() || p.name.empty() || p.patronymic.empty()) {
+    if (p.surname.empty() || p.name.empty() || p.patronymic.empty()) 
+    {
         std::cerr << "Ошибка: ФИО содержит недопустимые символы.\n";
         return false;
     }
-    if (p.birthDate.empty()) {
+    if (p.birthDate.empty()) 
+    {
         std::cerr << "Ошибка: некорректная дата рождения.\n";
         return false;
     }
-    if (p.phone.empty()) {
+    if (p.phone.empty()) 
+    {
         std::cerr << "Ошибка: некорректный телефон.\n";
         return false;
     }
-    if (p.email.empty()) {
+    if (p.email.empty()) 
+    {
         std::cerr << "Ошибка: некорректный email.\n";
         return false;
     }
     return true;
 }
 
-void printPerson(const Person& p) {
+void printPerson(const Person& p) 
+{
     std::cout << p.surname << " " << p.name << " " << p.patronymic << " "
               << p.birthDate << " " << p.phone << " " << p.email << "\n";
 }
@@ -236,7 +255,8 @@ void printPerson(const Person& p) {
 void writePerson(std::ostream& os,
                  const Person& raw,
                  const Person& normalized,
-                 bool valid) {
+                 bool valid) 
+{
     os << "=== Анкета ===\n\n";
 
     os << "Исходные данные:\n";

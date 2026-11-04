@@ -4,26 +4,29 @@
 
 RandomPersonGenerator::RandomPersonGenerator()
     : rng(std::random_device{}()),
-      surnames{
+      surnames
+      {
           "Иванов", "Петров", "Сидоров", "Смирнов", "Кузнецов",
           "Попов", "Васильев", "Соколов", "Михайлов", "Новиков",
           "Фёдоров", "Морозов", "Волков", "Алексеев", "Лебедев"
       },
-      names{
+      names
+      {
           "Иван", "Пётр", "Сергей", "Алексей", "Дмитрий",
           "Андрей", "Михаил", "Николай", "Владимир", "Егор"
       },
-      patronymics{
+      patronymics
+      {
           "Иванович", "Петрович", "Сергеевич", "Алексеевич", "Дмитриевич",
           "Андреевич", "Михайлович", "Николаевич", "Владимирович", "Егорович"
       }
-{
-}
+{}
 
-Person RandomPersonGenerator::generate() {
+Person RandomPersonGenerator::generate() 
+{
     Person p;
-    p.surname    = pick(surnames);
-    p.name       = pick(names);
+    p.surname = pick(surnames);
+    p.name = pick(names);
     p.patronymic = pick(patronymics);
 
     std::uniform_int_distribution<int> yearDist(1950, 2005);
@@ -34,7 +37,6 @@ Person RandomPersonGenerator::generate() {
                   dayDist(rng), monthDist(rng), yearDist(rng));
     p.birthDate = dateBuf;
 
-    // +79XXXXXXXXX — типичный российский мобильный
     std::uniform_int_distribution<int> digitDist(0, 9);
     std::string phone = "+79";
     for (int i = 0; i < 9; ++i)
