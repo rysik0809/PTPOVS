@@ -30,33 +30,27 @@ std::string trim(const std::string& s)
 }
 
 /// formatDuration — превращает длительность в человекочитаемую строку.
-/// Точность 3 знака после запятой — миллисекунды.
-std::string formatDuration(std::chrono::duration<double> d) 
+std::string formatDuration(std::chrono::duration<double> d)
 {
     using namespace std::chrono;
     auto totalSec = d.count();
 
-    if (totalSec < 60.0) 
+    if (totalSec < 60.0)
     {
         std::ostringstream os;
         os << std::fixed << std::setprecision(3) << totalSec << " с";
         return os.str();
     }
 
-    /// Раскладываем секунды на часы / минуты / доли секунды
+    /// Раскладываем секунды на минуты и доли секунды
     long long totalSecInt = static_cast<long long>(totalSec);
-    long long hours   = totalSecInt / 3600;
-    long long minutes = (totalSecInt % 3600) / 60;
-    double    seconds = totalSec - static_cast<double>(hours * 3600 + minutes * 60);
+    long long minutes = totalSecInt / 60;
+    double    seconds = totalSec - static_cast<double>(minutes * 60);
 
     std::ostringstream os;
     os << std::fixed << std::setprecision(3);
-    if (hours > 0)
-        os << hours << " ч " << std::setw(2) << std::setfill('0') << minutes
-           << " мин " << std::setw(6) << std::setfill('0') << seconds << " с";
-    else
-        os << minutes << " мин " << std::setw(6) << std::setfill('0')
-           << seconds << " с";
+    os << minutes << " мин " << std::setw(6) << std::setfill('0')
+       << seconds << " с";
     return os.str();
 }
 
@@ -65,8 +59,6 @@ std::string formatDuration(std::chrono::duration<double> d)
 int main() 
 {
     std::locale::global(std::locale(""));
-
-    std::cout << "Лабораторная работа №2. Вариант 2: Markdown\n\n";
 
     std::cout << "Введите путь к файлу для анализа (Enter — block.md): ";
     std::string inputPath;

@@ -160,7 +160,7 @@ AnalysisStats analyzeMarkdownFile(const std::string& filename,
     if (blockSize == 0)
         blockSize = 1024 * 1024;
 
-    out << "=== Результаты анализа Markdown ===\n";
+    out << "Результаты анализа Markdown\n";
     out << "Файл: " << filename << "\n\n";
 
     std::vector<char> buffer(blockSize);

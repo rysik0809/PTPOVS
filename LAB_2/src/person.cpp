@@ -216,12 +216,12 @@ Person inputPerson()
 
 bool validateAndNormalize(Person& p) 
 {
-    p.surname    = normalizeNamePart(p.surname);
-    p.name       = normalizeNamePart(p.name);
+    p.surname = normalizeNamePart(p.surname);
+    p.name = normalizeNamePart(p.name);
     p.patronymic = normalizeNamePart(p.patronymic);
-    p.birthDate  = normalizeBirthDate(p.birthDate);
-    p.phone      = normalizePhone(p.phone);
-    p.email      = normalizeEmail(p.email);
+    p.birthDate = normalizeBirthDate(p.birthDate);
+    p.phone = normalizePhone(p.phone);
+    p.email = normalizeEmail(p.email);
 
     if (p.surname.empty() || p.name.empty() || p.patronymic.empty()) 
     {
