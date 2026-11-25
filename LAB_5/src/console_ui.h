@@ -9,10 +9,6 @@
 #include <mutex>
 #include <string>
 
-/**
- * @brief Интерактивное меню для взаимодействия с очередью,
- *        фоновым пулом и асинхронным процессором.
- */
 class ConsoleUI {
 public:
     ConsoleUI(FileWatcher&      watcher,
@@ -35,6 +31,7 @@ private:
     void handleAsyncCancel() const;
     void handleAsyncStatus() const;
     void handleShowDirectory() const;
+    void handleShowExceptionsLog() const;   // ЛР №5, п.2
 
     std::string promptLine(const std::string& prompt) const;
     int         promptInt (const std::string& prompt) const;

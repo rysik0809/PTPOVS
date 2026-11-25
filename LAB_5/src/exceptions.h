@@ -1,64 +1,71 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 
-/// Базовый класс для пользовательских исключений Лабораторной №5.
+/// Максимальный размер анализируемого файла — 24 Мб.
+constexpr std::uintmax_t MAX_FILE_SIZE_BYTES = 24ull * 1024ull * 1024ull;
+
+/// Базовый класс для всех исключений лабораторной работы №5.
 class Lab5Exception : public std::runtime_error {
 public:
-    explicit Lab5Exception(const std::string& message);
+    explicit Lab5Exception(const std::string& msg) : std::runtime_error(msg) {}
 };
 
-/// Файл превышает максимально допустимый размер (24 МБ).
+/// Файл превышает допустимый размер.
 class FileTooLargeException : public Lab5Exception {
 public:
-    static constexpr std::uintmax_t MaxFileSize = 24ull * 1024 * 1024;
+    FileTooLargeException(const std::string& path, std::uintmax_t actualSize);
 
-    FileTooLargeException(const std::string& path, std::uintmax_t size);
-
-    const std::string& path() const noexcept { return path_; }
-    std::uintmax_t     size() const noexcept { return size_; }
+    std::uintmax_t      actualSize() const noexcept { return actualSize_; }
+    std::uintmax_t      maxSize()    const noexcept { return MAX_FILE_SIZE_BYTES; }
+    const std::string&  path()       const noexcept { return path_; }
 
 private:
     std::string    path_;
-    std::uintmax_t size_ = 0;
+    std::uintmax_t actualSize_;
 };
 
-/// Файл был удалён из каталога или стал недоступен.
-class FileRemovedException : public Lab5Exception {
+/// Файл был удалён из отслеживаемого каталога до/во время обработки.
+class FileDeletedException : public Lab5Exception {
 public:
-    explicit FileRemovedException(const std::string& path);
+    explicit FileDeletedException(const std::string& path);
     const std::string& path() const noexcept { return path_; }
-
 private:
     std::string path_;
 };
 
-/// Нет прав на чтение указанного каталога.
+/// Нет прав на чтение каталога.
 class DirectoryAccessException : public Lab5Exception {
 public:
-    DirectoryAccessException(const std::string& path,
-                             const std::string& reason);
-
-    const std::string& path()   const noexcept { return path_; }
-    const std::string& reason() const noexcept { return reason_; }
-
+    DirectoryAccessException(const std::string& dir, const std::string& reason);
+    const std::string& directory() const noexcept { return directory_; }
 private:
-    std::string path_;
-    std::string reason_;
+    std::string directory_;
 };
 
-/// Файл не соответствует формату Markdown.
-class UnsupportedFileFormatException : public Lab5Exception {
+/// Файл не соответствует ожидаемому формату (Markdown).
+class FormatMismatchException : public Lab5Exception {
 public:
-    UnsupportedFileFormatException(const std::string& path,
-                                   const std::string& reason);
-
-    const std::string& path()   const noexcept { return path_; }
-    const std::string& reason() const noexcept { return reason_; }
-
+    FormatMismatchException(const std::string& path, const std::string& expected);
+    const std::string& path()     const noexcept { return path_; }
+    const std::string& expected() const noexcept { return expected_; }
 private:
     std::string path_;
-    std::string reason_;
+    std::string expected_;
 };
+
+/// Путь к журналу исключений (./results/exceptions.log).
+std::string exceptionLogPath();
+
+/// Записывает информацию об исключении в журнал. Потокобезопасна.
+void logException(const std::string& context, const std::exception& e);
+
+/// Проверяет, что расширение файла соответствует формату Markdown.
+bool isSupportedMarkdownFile(const std::string& path);
+
+/// Убеждается, что каталог существует и читается; при необходимости создаёт его.
+/// Бросает DirectoryAccessException.
+void ensureDirectoryReadable(const std::string& dir);

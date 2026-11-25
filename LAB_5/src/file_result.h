@@ -9,31 +9,26 @@
 #include <unordered_map>
 #include <vector>
 
-/// Текущее состояние обработки одного файла.
 enum class FileStatus {
     Queued,       ///< Файл стоит в очереди.
     Processing,   ///< Сейчас обрабатывается рабочим потоком.
     Done,         ///< Обработан успешно.
-    Cancelled,    ///< Отменён (cancel() в асинхронной части либо reset).
-    Error         ///< Ошибка обработки.
+    Cancelled,    ///< Отменён.
+    Error         ///< Ошибка обработки (в т.ч. исключительная ситуация).
 };
 
 std::string statusToString(FileStatus s);
 
-/// Результат обработки одного файла.
 struct FileResult {
-    std::string path;                       ///< Полный путь к входному файлу.
+    std::string path;
     FileStatus  status = FileStatus::Queued;
-    AnalysisStats stats;                    ///< Заполнено при status == Done.
-    std::string error;                      ///< Текст ошибки при status == Error.
-    std::string resultsFile;                ///< Путь к файлу с полным выводом.
+    AnalysisStats stats;
+    std::string error;
+    std::string resultsFile;
     std::chrono::system_clock::time_point updatedAt =
-        std::chrono::system_clock::now();   ///< Момент последнего изменения.
+        std::chrono::system_clock::now();
 };
 
-/**
- * @brief Потокобезопасное хранилище статусов и результатов обработки.
- */
 class ResultsStorage {
 public:
     void markQueued    (const std::string& path);

@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <mutex>
 #include <set>
 #include <string>
@@ -14,8 +15,9 @@
  * @brief Поток-наблюдатель, опрашивающий каталог и добавляющий
  *        в очередь новые (ещё не виденные) файлы.
  *
- * Опрос — по таймеру (500 мс). При смене каталога «виденные» файлы
- * сбрасываются, чтобы в новом каталоге всё обработалось заново.
+ * При недоступности каталога (нет прав / удалён) бросается
+ * DirectoryAccessException, которая пишется в журнал один раз
+ * на «поколение» (без спама каждые 500 мс).
  */
 class FileWatcher {
 public:
@@ -42,4 +44,7 @@ private:
     std::uint64_t                 generation_ = 0;
     std::atomic<bool>             running_{false};
     std::chrono::milliseconds     pollInterval_{500};
+
+    /// Поколение, для которого мы уже сообщили об ошибке доступа.
+    std::uint64_t loggedFailedGeneration_ = std::numeric_limits<std::uint64_t>::max();
 };

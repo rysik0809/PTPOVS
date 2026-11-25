@@ -23,7 +23,7 @@ void WorkerPool::start(std::size_t numThreads) {
 
 void WorkerPool::stop() {
     if (!running_.exchange(false)) return;
-    queue_.stop();                              // разбудить всех
+    queue_.stop();
     for (auto& t : workers_) if (t.joinable()) t.join();
     workers_.clear();
 }
@@ -31,7 +31,7 @@ void WorkerPool::stop() {
 void WorkerPool::workerLoop() {
     std::string path;
     while (queue_.pop(path)) {
-        if (!running_.load()) break;            // остановка — не обрабатываем
+        if (!running_.load()) break;
         processOneFile(path, results_);
     }
 }

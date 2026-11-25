@@ -8,13 +8,6 @@
 #include <thread>
 #include <vector>
 
-/**
- * @brief Пул рабочих потоков, извлекающих файлы из очереди
- *        и обрабатывающих их функциями Лабораторной №2/№3.
- *
- * Количество потоков определяется в момент start(); при передаче 0
- * берётся std::thread::hardware_concurrency().
- */
 class WorkerPool {
 public:
     WorkerPool(ThreadSafeQueue<std::string>& queue,

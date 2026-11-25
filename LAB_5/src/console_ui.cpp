@@ -1,18 +1,16 @@
 #include "console_ui.h"
-
 #include "exceptions.h"
-#include "file_processor.h"
-#include "logger.h"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <vector>
 
-ConsoleUI::ConsoleUI(FileWatcher& watcher,
-                     WorkerPool& pool,
-                     AsyncProcessor& async,
-                     ResultsStorage& results,
+ConsoleUI::ConsoleUI(FileWatcher&      watcher,
+                     WorkerPool&       pool,
+                     AsyncProcessor&   async,
+                     ResultsStorage&   results,
                      ThreadSafeQueue<std::string>& queue)
     : watcher_(watcher),
       pool_(pool),
@@ -31,24 +29,20 @@ std::string ConsoleUI::promptLine(const std::string& prompt) const {
 int ConsoleUI::promptInt(const std::string& prompt) const {
     std::lock_guard<std::mutex> lock(ioMutex_);
     std::cout << prompt;
-
     int v = 0;
     std::cin >> v;
-
     if (!std::cin) {
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         return -1;
     }
-
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     return v;
 }
 
 void ConsoleUI::printMenu() const {
     std::lock_guard<std::mutex> lock(ioMutex_);
-
-    std::cout << "\n=== Лабораторная №4/№5: многопоточность, асинхронность, исключения ===\n";
+    std::cout << "\n=== Лабораторная №5: обработка исключительных ситуаций ===\n";
     std::cout << " 1. Показать состояние очереди\n";
     std::cout << " 2. Показать результат обработки файла\n";
     std::cout << " 3. Изменить каталог отслеживания\n";
@@ -58,6 +52,7 @@ void ConsoleUI::printMenu() const {
     std::cout << " 7. Отменить асинхронную операцию\n";
     std::cout << " 8. Показать статус асинхронной обработки\n";
     std::cout << " 9. Показать текущий каталог\n";
+    std::cout << "10. Показать журнал исключений\n";
     std::cout << " 0. Выход\n";
     std::cout << "Выбор: ";
 }
@@ -65,18 +60,19 @@ void ConsoleUI::printMenu() const {
 void ConsoleUI::run() {
     while (true) {
         printMenu();
-        const int choice = promptInt("");
+        int choice = promptInt("");
 
         switch (choice) {
-            case 1: handleQueueState();       break;
-            case 2: handleFileResult();       break;
-            case 3: handleChangeDirectory();  break;
-            case 4: handleResetResults();     break;
-            case 5: handleResetQueue();       break;
-            case 6: handleAsyncStart();       break;
-            case 7: handleAsyncCancel();      break;
-            case 8: handleAsyncStatus();      break;
-            case 9: handleShowDirectory();    break;
+            case 1: handleQueueState();         break;
+            case 2: handleFileResult();         break;
+            case 3: handleChangeDirectory();    break;
+            case 4: handleResetResults();       break;
+            case 5: handleResetQueue();         break;
+            case 6: handleAsyncStart();         break;
+            case 7: handleAsyncCancel();        break;
+            case 8: handleAsyncStatus();        break;
+            case 9: handleShowDirectory();      break;
+            case 10: handleShowExceptionsLog(); break;
             case 0: return;
             default:
                 std::cout << "Неизвестный пункт меню.\n";
@@ -86,35 +82,27 @@ void ConsoleUI::run() {
 
 void ConsoleUI::handleQueueState() const {
     const auto items = queue_.snapshot();
-
     std::lock_guard<std::mutex> lock(ioMutex_);
     std::cout << "\n--- Очередь (" << items.size() << " файлов) ---\n";
-
     if (items.empty()) {
         std::cout << "(пусто)\n";
         return;
     }
-
-    for (const auto& p : items) {
-        std::cout << "  " << p << "\n";
-    }
+    for (const auto& p : items) std::cout << "  " << p << "\n";
 }
 
 void ConsoleUI::handleFileResult() const {
-    const std::string path = promptLine("Путь к файлу: ");
+    std::string path = promptLine("Путь к файлу: ");
     if (path.empty()) return;
 
     const auto result = results_.get(path);
-
     std::lock_guard<std::mutex> lock(ioMutex_);
     if (!result) {
         std::cout << "Информации по файлу нет.\n";
         return;
     }
-
     std::cout << "\nФайл:    " << result->path << "\n";
     std::cout << "Статус:  " << statusToString(result->status) << "\n";
-
     if (result->status == FileStatus::Done) {
         std::cout << "Строк:                    " << result->stats.totalLines   << "\n";
         std::cout << "Заголовков:               " << result->stats.headings     << "\n";
@@ -123,6 +111,10 @@ void ConsoleUI::handleFileResult() const {
         std::cout << "Строк с чужой разметкой:  " << result->stats.foreignLines << "\n";
         std::cout << "Полный результат:         " << result->resultsFile        << "\n";
     } else if (result->status == FileStatus::Error) {
+        // Здесь, в частности, отображаются сообщения из пользовательских исключений:
+        //   - слишком большой файл,
+        //   - удалённый файл,
+        //   - неверный формат и т.п.
         std::cout << "Ошибка: " << result->error << "\n";
     } else if (result->status == FileStatus::Cancelled) {
         std::cout << "Обработка была отменена.\n";
@@ -130,26 +122,20 @@ void ConsoleUI::handleFileResult() const {
 }
 
 void ConsoleUI::handleChangeDirectory() {
-    const std::string dir = promptLine("Новый каталог отслеживания: ");
+    std::string dir = promptLine("Новый каталог отслеживания: ");
     if (dir.empty()) return;
-
-    std::error_code ec;
-    std::filesystem::create_directories(dir, ec);
-    if (ec) {
-        std::cout << "Не удалось создать каталог: " << ec.message() << "\n";
-        return;
-    }
-
     try {
-        ensureDirectoryReadable(dir);
-    } catch (const DirectoryAccessException& e) {
-        Logger::instance().logException(e, "ConsoleUI::handleChangeDirectory");
-        std::cout << e.what() << "\n";
-        return;
+        watcher_.setDirectory(dir);
+        std::cout << "Каталог отслеживания: " << dir << "\n";
     }
-
-    watcher_.setDirectory(dir);
-    std::cout << "Каталог отслеживания: " << dir << "\n";
+    catch (const DirectoryAccessException& e) {
+        logException("ConsoleUI::handleChangeDirectory", e);
+        std::cout << "Ошибка: " << e.what() << "\n";
+    }
+    catch (const std::exception& e) {
+        logException("ConsoleUI::handleChangeDirectory", e);
+        std::cout << "Ошибка: " << e.what() << "\n";
+    }
 }
 
 void ConsoleUI::handleResetResults() const {
@@ -176,30 +162,24 @@ void ConsoleUI::handleAsyncStart() {
         return;
     }
 
-    try {
-        ensureDirectoryReadable(dir);
-    } catch (const DirectoryAccessException& e) {
-        Logger::instance().logException(e, "ConsoleUI::handleAsyncStart");
-        std::cout << e.what() << "\n";
-        return;
-    }
-
     std::vector<std::string> files;
-    std::error_code ec;
-    std::filesystem::directory_iterator it(dir, ec);
-
-    if (ec) {
-        const DirectoryAccessException e(dir, ec.message());
-        Logger::instance().logException(e, "ConsoleUI::handleAsyncStart");
-        std::cout << e.what() << "\n";
-        return;
-    }
-
-    for (const auto& entry : it) {
-        std::error_code statEc;
-        if (entry.is_regular_file(statEc) && !statEc) {
-            files.push_back(entry.path().string());
+    try {
+        std::error_code ec;
+        std::filesystem::directory_iterator it(dir, ec);
+        if (ec) {
+            throw DirectoryAccessException(dir, ec.message());
         }
+        for (const auto& e : it) {
+            std::error_code statEc;
+            if (e.is_regular_file(statEc) && !statEc) {
+                files.push_back(e.path().string());
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        logException("ConsoleUI::handleAsyncStart", e);
+        std::cout << "Ошибка чтения каталога: " << e.what() << "\n";
+        return;
     }
 
     if (files.empty()) {
@@ -217,26 +197,21 @@ void ConsoleUI::handleAsyncCancel() const {
         std::cout << "Асинхронная обработка не запущена.\n";
         return;
     }
-
     async_.cancel();
     std::cout << "Отправлен сигнал отмены асинхронной операции.\n";
 }
 
 void ConsoleUI::handleAsyncStatus() const {
     const auto snapshot = async_.status();
-
     std::lock_guard<std::mutex> lock(ioMutex_);
 
-    if (snapshot.empty()) {
+    if (snapshot.empty() && !async_.isRunning()) {
         std::cout << "Асинхронных задач ещё не было.\n";
         return;
     }
-
     std::cout << "\n--- Статус асинхронной обработки ---\n";
-
     for (const auto& r : snapshot) {
         std::cout << "  [" << statusToString(r.status) << "] " << r.path;
-
         if (r.status == FileStatus::Done) {
             std::cout << "   H=" << r.stats.headings
                       << " P=" << r.stats.paragraphs
@@ -245,15 +220,36 @@ void ConsoleUI::handleAsyncStatus() const {
         } else if (r.status == FileStatus::Error) {
             std::cout << "   ошибка: " << r.error;
         }
-
         std::cout << "\n";
     }
 
-    std::cout << (async_.isRunning()
-                      ? "Асинхронная операция ещё выполняется.\n"
-                      : "Асинхронная операция завершена.\n");
+    if (async_.isRunning()) {
+        std::cout << "Асинхронная операция ещё выполняется (прошло "
+                  << async_.elapsedTime().count() << " мс).\n";
+    } else if (!snapshot.empty()) {
+        std::cout << "Асинхронная операция завершена за "
+                  << async_.elapsedTime().count() << " мс.\n";
+    }
 }
 
 void ConsoleUI::handleShowDirectory() const {
     std::cout << "Каталог отслеживания: " << watcher_.getDirectory() << "\n";
+}
+
+void ConsoleUI::handleShowExceptionsLog() const {
+    const std::string path = exceptionLogPath();
+    std::lock_guard<std::mutex> lock(ioMutex_);
+    std::cout << "\nЖурнал исключений: " << path << "\n";
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        std::cout << "(журнал пуст)\n";
+        return;
+    }
+    std::string line;
+    bool any = false;
+    while (std::getline(in, line)) {
+        std::cout << line << "\n";
+        any = true;
+    }
+    if (!any) std::cout << "(журнал пуст)\n";
 }
