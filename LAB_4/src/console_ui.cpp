@@ -169,6 +169,7 @@ void ConsoleUI::handleAsyncStart() {
     async_.start(files);
     std::cout << "Запущена асинхронная обработка " << files.size()
               << " файлов на " << async_.threadCount() << " потоках.\n";
+    std::cout << "Таймер операции запущен. Для проверки прогресса используйте пункт 8.\n";
 }
 
 void ConsoleUI::handleAsyncCancel() const {
@@ -184,7 +185,7 @@ void ConsoleUI::handleAsyncStatus() const {
     const auto snapshot = async_.status();
     std::lock_guard<std::mutex> lock(ioMutex_);
 
-    if (snapshot.empty()) {
+    if (snapshot.empty() && !async_.isRunning()) {
         std::cout << "Асинхронных задач ещё не было.\n";
         return;
     }
@@ -201,9 +202,15 @@ void ConsoleUI::handleAsyncStatus() const {
         }
         std::cout << "\n";
     }
-    std::cout << (async_.isRunning()
-                  ? "Асинхронная операция ещё выполняется.\n"
-                  : "Асинхронная операция завершена.\n");
+    
+    // Вывод общего времени операции
+    if (async_.isRunning()) {
+        std::cout << "Асинхронная операция ещё выполняется (прошло " 
+                  << async_.elapsedTime().count() << " мс).\n";
+    } else if (!snapshot.empty()) {
+        std::cout << "Асинхронная операция завершена за " 
+                  << async_.elapsedTime().count() << " мс.\n";
+    }
 }
 
 void ConsoleUI::handleShowDirectory() const {

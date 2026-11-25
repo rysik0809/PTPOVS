@@ -4,6 +4,7 @@
 #include "thread_safe_queue.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <thread>
@@ -37,6 +38,9 @@ public:
     void                     clearResults();
     std::size_t              threadCount() const { return numThreads_; }
 
+    /// Возвращает затраченное время (в мс) с момента start()
+    std::chrono::milliseconds elapsedTime() const;
+
 private:
     void runWorkers();
 
@@ -47,4 +51,9 @@ private:
     std::atomic<bool>                             cancelled_{false};
     std::atomic<std::size_t>                      remaining_{0};
     std::size_t                                   numThreads_ = 0;
+    
+    // Переменные для замера времени
+    std::chrono::steady_clock::time_point         startTime_;
+    std::chrono::steady_clock::time_point         endTime_;
+    std::atomic<bool>                             finished_{true};
 };

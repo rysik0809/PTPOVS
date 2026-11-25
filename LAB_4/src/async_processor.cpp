@@ -4,10 +4,12 @@
 #include <algorithm>
 #include <stdexcept>
 
+// Порядок инициализации в списке изменен на правильный: 
+// сначала results_ (так как он объявлен первым в .h), затем numThreads_.
 AsyncProcessor::AsyncProcessor(std::size_t numThreads)
-    : numThreads_(numThreads ? numThreads
-                             : std::max(1u, std::thread::hardware_concurrency())),
-      results_(std::make_unique<ResultsStorage>()) {}
+    : results_(std::make_unique<ResultsStorage>()),
+      numThreads_(numThreads ? numThreads
+                             : std::max(1u, std::thread::hardware_concurrency())) {}
 
 AsyncProcessor::~AsyncProcessor() {
     cancel();
@@ -21,6 +23,9 @@ void AsyncProcessor::start(const std::vector<std::string>& files) {
     if (thread_.joinable()) thread_.join();
 
     cancelled_ = false;
+    finished_  = false;
+    startTime_ = std::chrono::steady_clock::now();
+    
     results_->clear();
     queue_     = std::make_unique<ThreadSafeQueue<std::string>>();
     remaining_ = files.size();
@@ -28,6 +33,8 @@ void AsyncProcessor::start(const std::vector<std::string>& files) {
     if (files.empty()) {
         queue_->stop();
         running_ = false;
+        finished_ = true;
+        endTime_ = std::chrono::steady_clock::now();
         return;
     }
 
@@ -57,6 +64,15 @@ std::vector<FileResult> AsyncProcessor::status() const {
 
 void AsyncProcessor::clearResults() { results_->clear(); }
 
+std::chrono::milliseconds AsyncProcessor::elapsedTime() const {
+    if (running_.load() || !finished_.load()) {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - startTime_);
+    }
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        endTime_ - startTime_);
+}
+
 void AsyncProcessor::runWorkers() {
     std::vector<std::thread> workers;
     workers.reserve(numThreads_);
@@ -78,5 +94,8 @@ void AsyncProcessor::runWorkers() {
     }
 
     for (auto& t : workers) t.join();
-    running_ = false;
+    
+    running_  = false;
+    endTime_  = std::chrono::steady_clock::now();
+    finished_ = true;
 }
